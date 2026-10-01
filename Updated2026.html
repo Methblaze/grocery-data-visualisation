@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grocery Shopping Data Visualisation</title>
+<style>
+  :root {
+    --page: #F6F7F5;
+    --card: #FFFFFF;
+    --ink: #15181B;
+    --muted: #6B7280;
+    --line: #E3E6E2;
+    --wall: #8E978F;
+    --accent: #1C6B4C;
+    --neutral-aisle: #EDEFEC;
+    --track: #DFE3DD;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(20,25,20,.05), 0 8px 24px rgba(20,25,20,.06);
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 16px 56px;
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; }
+
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+
+  h1 {
+    font-size: clamp(26px, 4vw, 40px);
+    line-height: 1.1; letter-spacing: -0.02em; font-weight: 700; margin: 0 0 10px;
+  }
+
+  .lede {
+    margin: 0 0 26px; max-width: 62ch;
+    font-size: 16px; line-height: 1.55; color: var(--muted);
+  }
+
+  .modes { display: inline-flex; gap: 4px; padding: 4px;
+    background: #ECEEEA; border-radius: 999px; margin-bottom: 18px; }
+  .mode {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 500; color: var(--muted);
+    padding: 8px 16px; border-radius: 999px; transition: background .15s, color .15s;
+  }
+  .mode[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+  .mode:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 20px;
+    align-items: flex-end; justify-content: space-between; margin-bottom: 18px;
+  }
+
+  .people { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .chip {
+    appearance: none; border: 1px solid var(--line); background: var(--card);
+    color: var(--ink); font-family: inherit; font-size: 14px; font-weight: 500;
+    padding: 9px 16px; border-radius: 999px; cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .chip:hover { border-color: #C9CFC8; }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; opacity: .4; }
+  .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .chip[aria-pressed="true"] .dot { opacity: 1; }
+
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 18px; min-width: 142px; box-shadow: var(--shadow);
+  }
+  .stat .label {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+  }
+  .stat .value { font-size: 24px; font-weight: 700; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums; }
+  .stat.saved .value { color: var(--accent); }
+
+  /* compare mode: one small total per person */
+  .totals { display: flex; gap: 10px; flex-wrap: wrap; }
+  .total {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 9px 13px; box-shadow: var(--shadow); min-width: 104px;
+  }
+  .total .who {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 3px;
+  }
+  .total .swatch { width: 9px; height: 9px; border-radius: 50%; }
+  .total .amount { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 22px 22px 14px;
+  }
+
+  .legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 14px; font-size: 12px; color: var(--muted); }
+  .legend .ramp { height: 10px; width: 190px; border-radius: 999px; border: 1px solid var(--line); }
+  #legend-ramp { transition: opacity .3s ease; }
+  #legend-ramp.dimmed { opacity: .3; }
+  .legend .key { display: inline-flex; align-items: center; gap: 6px; color: var(--ink);
+    font-weight: 500; }
+  .legend .key i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .hidden { display: none !important; }
+
+  .hint { margin: 10px 2px 0; font-size: 13px; color: var(--muted); }
+
+  .category-rect { pointer-events: all; cursor: pointer; }
+
+  /* On narrow screens the floor plan keeps a readable minimum width and
+     the panel scrolls sideways, rather than shrinking the labels away. */
+  #segment { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .scroll-hint { display: none; }
+  /* Panel header: legend on the left, the 2024 / 2026 wiper on the right */
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .panel-head .legend { margin-bottom: 0; }
+  .era { display: inline-flex; align-items: center; gap: 10px; }
+  .era-badge {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .wiper-btn {
+    appearance: none; border: 1px solid var(--line); background: var(--card);
+    color: var(--ink); font-family: inherit; font-size: 13px; font-weight: 600;
+    padding: 8px 14px 8px 11px; border-radius: 999px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .wiper-btn:hover { border-color: #C9CFC8; }
+  .wiper-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wiper-btn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .wiper-btn svg { width: 18px; height: 18px; flex: none; }
+
+  /* Both versions of the store share one stage and one viewBox, so the
+     2024 layer lines up with the 2026 one exactly. */
+  .stage { position: relative; max-width: 1420px; margin: 0 auto; }
+  .stage svg { display: block; width: 100%; height: auto; }
+  .stage svg.legacy { position: absolute; inset: 0; height: 100%; pointer-events: none; }
+
+  @media (max-width: 800px) {
+    .stage { min-width: 700px; }
+    .scroll-hint { display: inline; }
+  }
+
+  .tooltip {
+    position: absolute; z-index: 50;
+    pointer-events: none; opacity: 0; transition: opacity .12s ease;
+    background: var(--card); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 12px; box-shadow: 0 10px 30px rgba(20,25,20,.14);
+    padding: 12px 14px; max-width: 280px; font-size: 14px; line-height: 1.4;
+  }
+  .tooltip .t-cat {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 2px;
+  }
+  .tooltip .t-val { font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+  .tooltip .t-note { color: var(--muted); font-size: 13px; }
+  .tooltip table { border-collapse: collapse; width: 100%; margin-top: 2px; }
+  .tooltip td { padding: 2px 0; font-size: 13px; }
+  .tooltip td.n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .tooltip td.w { display: flex; align-items: center; gap: 6px; }
+  .tooltip i.sw { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  footer { margin-top: 22px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  @media (max-width: 620px) {
+    .controls { flex-direction: column; align-items: stretch; }
+    .stats { width: 100%; }
+    .stat { flex: 1; min-width: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">IT University of Copenhagen &middot; Data Visualisation Design</p>
+  <h1>Grocery Shopping Data Visualisation</h1>
+  <p class="lede">
+    Three weeks of grocery receipts from five people, laid out as the shop they
+    were bought in. Each aisle is a category. Look at one person's store, where
+    shading shows where their money went, or compare people aisle by aisle.
+  </p>
+
+  <div class="modes" role="group" aria-label="View">
+    <button class="mode" type="button" id="mode-one" aria-pressed="true">One person</button>
+    <button class="mode" type="button" id="mode-compare" aria-pressed="false">Compare</button>
+  </div>
+
+  <div class="controls">
+    <div class="people" id="people"></div>
+
+    <div class="stats" id="stats">
+      <div class="stat">
+        <div class="label">Total spent</div>
+        <div class="value" id="stat-spent">&ndash;</div>
+      </div>
+      <div class="stat saved">
+        <div class="label">Saved on offers</div>
+        <div class="value" id="stat-saved">&ndash;</div>
+      </div>
+    </div>
+
+    <div class="totals hidden" id="totals"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <div class="legend" id="legend-ramp">
+          <span>Less spent</span>
+          <span class="ramp" id="ramp"></span>
+          <span>More spent</span>
+        </div>
+        <div class="legend hidden" id="legend-people"></div>
+      </div>
+
+      <div class="era" id="era">
+        <span class="era-badge" id="era-badge">2026 version</span>
+        <button class="wiper-btn" type="button" id="wiper-btn" aria-pressed="false">
+          <svg viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M2.5 14.5 A6.5 6.5 0 0 1 15.5 14.5" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" opacity=".45"/>
+            <line x1="9" y1="14.5" x2="4.4" y2="5.6" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="9" cy="14.5" r="1.6" fill="currentColor"/>
+          </svg>
+          <span id="wiper-label">See the 2024 version</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="segment"></div>
+
+    <p class="hint" id="hint-one">Hover an aisle for the exact amount. The two counters at the
+      bottom are the checkout and the discounts. Shading is scaled within the
+      person shown, so it compares aisles rather than people. The wiper sweeps
+      between this version and the one submitted in 2024.
+      <span class="scroll-hint">Scroll the store sideways to see all of it.</span></p>
+
+    <p class="hint hidden" id="hint-compare">Each aisle holds one bar per person, all on the same
+      scale, so bars can be read against each other both inside an aisle and across
+      the store. Pick people above to add or remove them.
+      <span class="scroll-hint">Scroll the store sideways to see all of it.</span></p>
+  </div>
+
+  <footer>
+    Course project at ITU, built with D3. Data collected by the group from its own
+    receipts between 20 March and 10 April 2024. Interface redesigned in 2026.
+  </footer>
+
+</div>
+
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v6.js"></script>
+
+<script>
+
+// ------------------------------ //
+//                                //
+//          CATEGORIES            //
+//                                //
+// ------------------------------ //
+
+
+var allCategoriesData = [
+    { category: "Fruits", x: 350, y: 100, width: 240, height: 150, color:"#97D1A9", text: "", tooltipText:  "We have bought vegetables for a total of 644,15 DKK."},
+    { category: "Vegetables", x: 350, y: 250, width: 150, height: 400, color: "#97D1A9", text: "Vegetables", tooltipText: "We have bought vegetables for a total of 644,15 DKK."},
+    { category: "Dairy", x: 620, y: 100, width: 240, height: 150, color: "#93CBE3", text: "Dairy", tooltipText: "We have bought dairy products for a total of 1.182,15 DKK."},
+    { category: "Refrigerator", x: 890, y: 100, width: 240, height: 150, color: "#A0D9D9", text: "Refrigerator", tooltipText: "We have bought refrigerator products for a total of 374,15 DKK." },
+    { category: "Colonial Goods", x: 1160, y: 100, width: 390, height: 150, color: "#8B8BC3", text: "Colonial Goods", tooltipText: "We have bought Colonial Goods for a total of 755,85 DKK." },
+    { category: "Colonial Goods", x: 1400, y: 245, width: 150, height: 150, color: "#8B8BC3", tooltipText:"We have bought Colonial Goods for a total of 755,85 DKK." },
+    { category: "Meat", x: 580, y: 350, width: 150, height: 300, color: "#F48170", text: "Meat", tooltipText:"We have bought meat for a total of 611,60 DKK." },
+    { category: "Bread", x: 760, y: 350, width: 150, height: 300, color: "#F8A655", text: "Bread", tooltipText:"We have bought bread for a total of 134,25 DKK." },
+    { category: "Frozen Goods", x: 940, y: 350, width: 150, height: 300, color: "#F38193", text: "Frozen Goods", tooltipText:"We have bought Frozen Goods for a total of 506,65 DKK."},
+    { category: "Other", x: 1120, y: 350, width: 150, height: 300, color: "#CAE089", text: "Other", tooltipText:"Other things we have bought for a total of 293,05 DKK."},
+    { category: "Soda", x: 1335, y: 430, width: 215, height: 100, color: "#E4B7D5", text: "Alcohol/Soda", tooltipText: "We have bought alcohol/soda for a total of 411,00 DKK."},
+    { category: "Candy", x: 1335 , y: 550, width: 215, height: 100, color: "#F491BB", text: "Candy/Snacks", tooltipText:"We have bought candy/snacks for a total of 510,25 DKK."},
+    { category: "Checkout1", x: 700, y: 730, width: 100, height: 130, color: "#FECE79", text: "Checkout", tooltipText: "In total we have used 5423,1 DKK."},
+    { category: "Checkout2", x: 1060 , y: 730, width: 100, height: 130, color: "#F7E49A", text: "Discounts", tooltipText: "In total we have saved 676,64 DKK."},
+    // Add more categories as needed
+];
+
+var Anna= [
+    { category: "Fruits", x: 350, y: 100, width: 240, height: 150, color:"#97D1A9", text: "", tooltipText:  "Anna has bought vegetables for a total of 229,55 DKK."},
+    { category: "Vegetables", x: 350, y: 250, width: 150, height: 400, color: "#97D1A9", text: "Vegetables", tooltipText: "Anna has bought vegetables for a total of 229,55 DKK."},
+    { category: "Dairy", x: 620, y: 100, width: 240, height: 150, color: "#93CBE3", text: "Dairy", tooltipText: "Anna has bought dairy products for a total of 438,00 DKK."},
+    { category: "Refrigerator", x: 890, y: 100, width: 240, height: 150, color: "#A0D9D9", text: "Refrigerator", tooltipText: "Anna has bought refrigerator products for a total of 130,65 DKK." },
+    { category: "Colonial Goods", x: 1160, y: 100, width: 390, height: 150, color: "#8B8BC3", text: "Colonial Goods", tooltipText: "Anna has bought Colonial Goods for a total of 187,35 DKK." },
+    { category: "Colonial Goods", x: 1400, y: 245, width: 150, height: 150, color: "#8B8BC3", tooltipText:"Anna has bought Colonial Goods for a total of 187,35 DKK." },
+    { category: "Meat", x: 580, y: 350, width: 150, height: 300, color: "#f08080", text: "Meat", tooltipText:"Anna has bought meat for a total of 399,70 DKK." },
+    { category: "Bread", x: 760, y: 350, width: 150, height: 300, color: "#F8A655", text: "Bread", tooltipText:"Anna has bought bread for a total of 36,15 DKK." },
+    { category: "Frozen Goods", x: 940, y: 350, width: 150, height: 300, color: "#F38193", text: "Frozen Goods", tooltipText:"Anna has bought Frozen Goods for a total of 89,85 DKK."},
+    { category: "Other", x: 1120, y: 350, width: 150, height: 300, color: "#CAE089", text: "Other", tooltipText:"Other things Anna has bought for a total of 69,95 DKK."},
+    { category: "Soda", x: 1335, y: 430, width: 215, height: 100, color: "#E4B7D5", text: "Alcohol/Soda", tooltipText: "Anna hasbought alcohol/soda for a total of 142,95 DKK."},
+    { category: "Candy", x: 1335 , y: 550, width: 215, height: 100, color: "#F491BB", text: "Candy/Snacks", tooltipText:"Anna hasbought candy/snacks for a total of 166,75 DKK."},
+    { category: "Checkout1", x: 700, y: 730, width: 100, height: 130, color: "#FECE79", text: "Checkout", tooltipText: "In total Anna has used 1.890,90 DKK."},
+    { category: "Checkout2", x: 1060 , y: 730, width: 100, height: 130, color: "#F7E49A", text: "Discounts", tooltipText: "In total Anna has saved 186,00 DKK."},
+];
+
+var Isabella= [
+    { category: "Fruits", x: 350, y: 100, width: 240, height: 150, color:"#97D1A9", text: "", tooltipText:  "Isabella has bought vegetables for a total of 149,35 DKK."},
+    { category: "Vegetables", x: 350, y: 250, width: 150, height: 400, color: "#97D1A9", text: "Vegetables", tooltipText: "Isabella has bought vegetables for a total of 149,35 DKK."},
+    { category: "Dairy", x: 620, y: 100, width: 240, height: 150, color: "#93CBE3", text: "Dairy", tooltipText: "Isabella has bought dairy products for a total of 192,80 DKK."},
+    { category: "Refrigerator", x: 890, y: 100, width: 240, height: 150, color: "#A0D9D9", text: "Refrigerator", tooltipText: "Isabella has bought refrigerator products for a total of 30 DKK." },
+    { category: "Colonial Goods", x: 1160, y: 100, width: 390, height: 150, color: "#8B8BC3", text: "Colonial Goods", tooltipText: "Isabella has bought Colonial Goods for a total of 151,10 DKK." },
+    { category: "Colonial Goods", x: 1400, y: 245, width: 150, height: 150, color: "#8B8BC3", tooltipText:"Isabella has bought Colonial Goods for a total of 151,10 DKK." },
+    { category: "Meat", x: 580, y: 350, width: 150, height: 300, color: "#f08080", text: "Meat", tooltipText:"Isabella has bought meat for a total of 64 DKK." },
+    { category: "Bread", x: 760, y: 350, width: 150, height: 300, color: "#F8A655", text: "Bread", tooltipText:"Isabella has bought bread for a total of 47,65 DKK." },
+    { category: "Frozen Goods", x: 940, y: 350, width: 150, height: 300, color: "#F38193", text: "Frozen Goods", tooltipText:"Isabella has bought Frozen Goods for a total of 53 DKK."},
+    { category: "Other", x: 1120, y: 350, width: 150, height: 300, color: "#CAE089", text: "Other", tooltipText:"Other things Isabella has bought for a total of 100,95 DKK."},
+    { category: "Soda", x: 1335, y: 430, width: 215, height: 100, color: "#E4B7D5", text: "Alcohol/Soda", tooltipText: "Isabella has bought alcohol/soda for a total of 64,60 DKK."},
+    { category: "Candy", x: 1335 , y: 550, width: 215, height: 100, color: "#F491BB", text: "Candy/Snacks", tooltipText:"Isabella has bought candy/snacks for a total of 45,25 DKK."},
+    { category: "Checkout1", x: 700, y: 730, width: 100, height: 130, color: "#FECE79", text: "Checkout", tooltipText: "In total Isabella has used 898,70 DKK."},
+    { category: "Checkout2", x: 1060 , y: 730, width: 100, height: 130, color: "#F7E49A", text: "Discounts", tooltipText: "In total Isabella has saved 120,90 DKK."},
+    // Add more categories as needed
+];
+
+var Camille= [
+    { category: "Fruits", x: 350, y: 100, width: 240, height: 150, color:"#97D1A9", text: "", tooltipText:  "Camille has bought vegetables for a total of 206,75 DKK."},
+    { category: "Vegetables", x: 350, y: 250, width: 150, height: 400, color: "#97D1A9", text: "Vegetables", tooltipText: "Camille has bought vegetables for a total of 206,75 DKK."},
+    { category: "Dairy", x: 620, y: 100, width: 240, height: 150, color: "#93CBE3", text: "Dairy", tooltipText: "Camille has bought dairy products for a total of 191 DKK."},
+    { category: "Refrigerator", x: 890, y: 100, width: 240, height: 150, color: "#A0D9D9", text: "Refrigerator", tooltipText: "Camille has bought refrigerator products for a total of 108 DKK." },
+    { category: "Colonial Goods", x: 1160, y: 100, width: 390, height: 150, color: "#8B8BC3", text: "Colonial Goods", tooltipText: "Camille has bought Colonial Goods for a total of 194 DKK." },
+    { category: "Colonial Goods", x: 1400, y: 245, width: 150, height: 150, color: "#8B8BC3", tooltipText:"Camille has bought Colonial Goods for a total of 194 DKK." },
+    { category: "Meat", x: 580, y: 350, width: 150, height: 300, color: "#f08080", text: "Meat", tooltipText:"Camille has bought meat for a total of 110 DKK." },
+    { category: "Bread", x: 760, y: 350, width: 150, height: 300, color: "#F8A655", text: "Bread", tooltipText:"Camille has bought bread for a total of 0 DKK." },
+    { category: "Frozen Goods", x: 940, y: 350, width: 150, height: 300, color: "#F38193", text: "Frozen Goods", tooltipText:"Camille has bought Frozen Goods for a total of 121 DKK."},
+    { category: "Other", x: 1120, y: 350, width: 150, height: 300, color: "#CAE089", text: "Other", tooltipText:"Other things Camille has bought for a total of 48 DKK."},
+    { category: "Soda", x: 1335, y: 430, width: 215, height: 100, color: "#E4B7D5", text: "Alcohol/Soda", tooltipText: "Camille has bought alcohol/soda for a total of 119 DKK."},
+    { category: "Candy", x: 1335 , y: 550, width: 215, height: 100, color: "#F491BB", text: "Candy/Snacks", tooltipText:"Camille has bought candy/snacks for a total of 117 DKK."},
+    { category: "Checkout1", x: 700, y: 730, width: 100, height: 130, color: "#FECE79", text: "Checkout", tooltipText: "In total Camille has used 1.214,75 DKK."},
+    { category: "Checkout2", x: 1060 , y: 730, width: 100, height: 130, color: "#F7E49A", text: "Discounts", tooltipText: "In total Camille has saved 150 DKK."},
+    // Add more categories as needed
+];
+
+var Nikoline= [
+    { category: "Fruits", x: 350, y: 100, width: 240, height: 150, color:"#97D1A9", text: "", tooltipText:  "Nikoline has bought vegetables for a total of 34,5 DKK."},
+    { category: "Vegetables", x: 350, y: 250, width: 150, height: 400, color: "#97D1A9", text: "Vegetables", tooltipText: "Nikoline has bought vegetables for a total of 34,5 DKK."},
+    { category: "Dairy", x: 620, y: 100, width: 240, height: 150, color: "#93CBE3", text: "Dairy", tooltipText: "Nikoline has bought dairy products for a total of 114,45 DKK."},
+    { category: "Refrigerator", x: 890, y: 100, width: 240, height: 150, color: "#A0D9D9", text: "Refrigerator", tooltipText: "Nikoline has bought refrigerator products for a total of 31,5 DKK." },
+    { category: "Colonial Goods", x: 1160, y: 100, width: 390, height: 150, color: "#8B8BC3", text: "Colonial Goods", tooltipText: "Nikoline have bought Colonial Goods for a total of 97,7 DKK." },
+    { category: "Colonial Goods", x: 1400, y: 245, width: 150, height: 150, color: "#8B8BC3", tooltipText:"Nikoline has bought Colonial Goods for a total of 97,7 DKK." },
+    { category: "Meat", x: 580, y: 350, width: 150, height: 300, color: "#f08080", text: "Meat", tooltipText:"Nikoline has bought meat for a total of 37,9 DKK." },
+    { category: "Bread", x: 760, y: 350, width: 150, height: 300, color: "#F8A655", text: "Bread", tooltipText:"Nikoline has bought bread for a total of 31,45 DKK." },
+    { category: "Frozen Goods", x: 940, y: 350, width: 150, height: 300, color: "#F38193", text: "Frozen Goods", tooltipText:"Nikoline has bought Frozen Goods for a total of 148,8 DKK."},
+    { category: "Other", x: 1120, y: 350, width: 150, height: 300, color: "#CAE089", text: "Other", tooltipText:"Other things Nikoline has bought for a total of 74,15 DKK."},
+    { category: "Soda", x: 1335, y: 430, width: 215, height: 100, color: "#E4B7D5", text: "Alcohol/Soda", tooltipText: "Nikoline has bought alcohol/soda for a total of 42,25 DKK."},
+    { category: "Candy", x: 1335 , y: 550, width: 215, height: 100, color: "#F491BB", text: "Candy/Snacks", tooltipText:"Nikoline has bought candy/snacks for a total of 31,9 DKK."},
+    { category: "Checkout1", x: 700, y: 730, width: 100, height: 130, color: "#FECE79", text: "Checkout", tooltipText: "In total Nikoline has used 644,6 DKK."},
+    { category: "Checkout2", x: 1060 , y: 730, width: 100, height: 130, color: "#F7E49A", text: "Discounts", tooltipText: "In total Nikoline has saved 21,25 DKK."},
+    // Add more categories as needed
+];
+
+var Jonathan= [
+    { category: "Fruits", x: 350, y: 100, width: 240, height: 150, color:"#97D1A9", text: "", tooltipText:  "Jonathan has bought vegetables for a total of 24 DKK."},
+    { category: "Vegetables", x: 350, y: 250, width: 150, height: 400, color: "#97D1A9", text: "Vegetables", tooltipText: "Jonathan has bought vegetables for a total of 24 DKK."},
+    { category: "Dairy", x: 620, y: 100, width: 240, height: 150, color: "#93CBE3", text: "Dairy", tooltipText: "Jonathan has bought dairy products for a total of 245,90 DKK."},
+    { category: "Refrigerator", x: 890, y: 100, width: 240, height: 150, color: "#A0D9D9", text: "Refrigerator", tooltipText: "Jonathan has bought refrigerator products for a total of 74 DKK." },
+    { category: "Colonial Goods", x: 1160, y: 100, width: 390, height: 150, color: "#8B8BC3", text: "Colonial Goods", tooltipText: "Jonathan has bought Colonial Goods for a total of 125,70 DKK." },
+    { category: "Colonial Goods", x: 1400, y: 245, width: 150, height: 150, color: "#8B8BC3", tooltipText:"Jonathan has bought Colonial Goods for a total of 125,70 DKK." },
+    { category: "Meat", x: 580, y: 350, width: 150, height: 300, color: "#f08080", text: "Meat", tooltipText:"Jonathan has bought meat for a total of 0 DKK." },
+    { category: "Bread", x: 760, y: 350, width: 150, height: 300, color: "#F8A655", text: "Bread", tooltipText:"Jonathan has bought bread for a total of 19 DKK." },
+    { category: "Frozen Goods", x: 940, y: 350, width: 150, height: 300, color: "#F38193", text: "Frozen Goods", tooltipText:"Jonathan has bought Frozen Goods for a total of 94 DKK."},
+    { category: "Other", x: 1120, y: 350, width: 150, height: 300, color: "#CAE089", text: "Other", tooltipText:"Other things Jonathan has bought for a total of 0 DKK."},
+    { category: "Soda", x: 1335, y: 430, width: 215, height: 100, color: "#E4B7D5", text: "Alcohol/Soda", tooltipText: "Jonathan has bought alcohol/soda for a total of 42,20 DKK."},
+    { category: "Candy", x: 1335 , y: 550, width: 215, height: 100, color: "#F491BB", text: "Candy/Snacks", tooltipText:"Jonathan has bought candy/snacks for a total of 149,35 DKK."},
+    { category: "Checkout1", x: 700, y: 730, width: 100, height: 130, color: "#FECE79", text: "Checkout", tooltipText: "In total Jonathan has used 774,15 DKK."},
+    { category: "Checkout2", x: 1060 , y: 730, width: 100, height: 130, color: "#F7E49A", text: "Discounts", tooltipText: "In total Jonathan has saved 198,49 DKK."},
+    // Add more categories as needed
+
+];
+
+// ------------------------------ //
+//                                //
+//        VALUE ENCODING          //
+//                                //
+// ------------------------------ //
+
+// Amounts live inside the tooltip sentences, in Danish format
+// ("1.182,15 DKK"). Read them out rather than restructuring the data.
+function parseAmount(text) {
+  if (!text) return 0;
+  var m = String(text).match(/([0-9][0-9.]*(?:,[0-9]+)?)\s*DKK/);
+  if (!m) return 0;
+  var n = parseFloat(m[1].replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+}
+
+var kr = function(n) {
+  return new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 }).format(n) + " kr";
+};
+
+// Single-hue sequential ramp, light to dark. Colour carries magnitude;
+// position and label carry identity, so no category needs its own hue.
+var RAMP = ["#EAF3EC", "#CFE6D6", "#A9D3B9", "#7CBC98", "#4E9F76", "#2C7F58", "#1C6B4C"];
+var SUMMARY_FILL = "#2C3A33";
+var NEUTRAL_AISLE = "#EDEFEC";
+var TRACK = "#DFE3DD";
+
+function isSummary(d) {
+  return d.category === "Checkout1" || d.category === "Checkout2";
+}
+
+// What the reader sees on the aisle. The two unlabelled halves of the L-shaped
+// aisles borrow the name of the half that carries the label.
+function displayName(d) {
+  if (d.text) return d.text;
+  if (d.category === "Fruits") return "Vegetables";
+  return d.category;
+}
+
+// The two counters are drawn wider than the source geometry so the words
+// "Checkout" and "Discounts" fit inside them. Same centre, more room.
+var SUMMARY_PAD = 44;
+var LABEL_MIN_H = 96;   // below this an aisle only gets its name
+function boxX(d) { return isSummary(d) ? d.x - SUMMARY_PAD : d.x; }
+function boxW(d) { return isSummary(d) ? d.width + SUMMARY_PAD * 2 : d.width; }
+
+function rampIndex(value, max) {
+  if (!max || value <= 0) return 0;
+  var t = Math.sqrt(value / max);              // soften the long tail
+  var i = Math.round(t * (RAMP.length - 1));
+  return Math.max(0, Math.min(RAMP.length - 1, i));
+}
+
+function fillFor(d, max) {
+  return isSummary(d) ? SUMMARY_FILL : RAMP[rampIndex(parseAmount(d.tooltipText), max)];
+}
+
+// White ink on the dark end of the ramp, dark ink on the light end.
+function inkFor(d, max) {
+  if (isSummary(d)) return "#FFFFFF";
+  return rampIndex(parseAmount(d.tooltipText), max) >= 5 ? "#FFFFFF" : "#15181B";
+}
+
+function maxAmount(data) {
+  return data.reduce(function(m, d) {
+    return isSummary(d) ? m : Math.max(m, parseAmount(d.tooltipText));
+  }, 0);
+}
+
+function summaryValue(data, key) {
+  for (var i = 0; i < data.length; i++) {
+    if (data[i].category === key) return parseAmount(data[i].tooltipText);
+  }
+  return 0;
+}
+
+// ------------------------------ //
+//                                //
+//             PEOPLE             //
+//                                //
+// ------------------------------ //
+
+// Five hues that clear the lightness band, the chroma floor, adjacent-pair
+// colour-blind separation and 3:1 against the surface. People also keep a
+// fixed row order and an initial beside each bar, so identity never rests on
+// colour alone.
+var PEOPLE = [
+  { name: "Anna",     initial: "A", colour: "#2E8B57", data: Anna },
+  { name: "Camille",  initial: "C", colour: "#2563C7", data: Camille },
+  { name: "Isabella", initial: "I", colour: "#C2185B", data: Isabella },
+  { name: "Jonathan", initial: "J", colour: "#D97706", data: Jonathan },
+  { name: "Nikoline", initial: "N", colour: "#7C3AED", data: Nikoline }
+];
+var EVERYONE = { name: "Everyone", colour: "#2C3A33", data: allCategoriesData };
+
+// The aisles worth drawing a bar in: the counters are totals, and two aisles
+// are the second half of an L-shape whose figure is already on the other half.
+function isAisle(d) { return !isSummary(d) && !!d.text; }
+
+function amountFor(person, category) {
+  for (var i = 0; i < person.data.length; i++) {
+    if (person.data[i].category === category) return parseAmount(person.data[i].tooltipText);
+  }
+  return 0;
+}
+
+// ------------------------------ //
+//                                //
+//        CANVAS AND CHROME       //
+//                                //
+// ------------------------------ //
+
+var segment = d3.select("#segment");
+
+var tooltipDiv = segment.append("div")
+  .attr("class", "tooltip")
+  .style("opacity", 0);
+
+var stage = segment.append("div").attr("class", "stage");
+
+var svgLines = stage.append("svg")
+  .attr("viewBox", "250 30 1420 900")
+  .attr("preserveAspectRatio", "xMidYMid meet");
+
+document.getElementById("ramp").style.background =
+  "linear-gradient(90deg, " + RAMP.join(", ") + ")";
+
+// ------------------------------ //
+//                                //
+//        LINES FOR STORE         //
+//                                //
+// ------------------------------ //
+
+var WALL = "#8E978F";
+
+var lines = [
+  svgLines.append('line').attr('x1', 300).attr('y1', 70).attr('x2', 1600).attr('y2', 70),
+  svgLines.append('line').attr('x1', 450).attr('y1', 900).attr('x2', 1400).attr('y2', 900),
+  svgLines.append('line').attr('x1', 300).attr('y1', 70).attr('x2', 300).attr('y2', 650),
+  svgLines.append('line').attr('x1', 1600).attr('y1', 70).attr('x2', 1600).attr('y2', 650),
+  svgLines.append('line').attr('x1', 300).attr('y1', 650).attr('x2', 450).attr('y2', 900),
+  svgLines.append('line').attr('x1', 1600).attr('y1', 650).attr('x2', 1400).attr('y2', 900)
+];
+
+lines.forEach(function(line) {
+  line.attr('stroke', WALL).attr('stroke-width', 4).attr('stroke-linecap', 'round');
+});
+
+// Overlay for the comparison bars, drawn with plain SVG on top of the aisles.
+var barsGroup = svgLines.append("g").attr("class", "compare-bars");
+var barsNode = barsGroup.node();
+
+// ------------------------------ //
+//                                //
+//      STATE AND TOOLTIPS        //
+//                                //
+// ------------------------------ //
+
+var state = {
+  mode: "one",                  // "one" | "compare"
+  person: EVERYONE,             // in one-person mode
+  selected: PEOPLE.slice(),     // in compare mode
+  legacy: false                 // 2024 layer swept into view
+};
+
+function tooltipHTML(d) {
+  // With the 2024 layer showing, answer the way the 2024 version did.
+  if (state.mode === "one" && state.legacy) {
+    return '<strong>' + d.tooltipText + '</strong>';
+  }
+  if (state.mode === "one") {
+    return '<div class="t-cat">' + displayName(d) + '</div>' +
+           '<div class="t-val">' + kr(parseAmount(d.tooltipText)) + '</div>' +
+           '<div class="t-note">' + d.tooltipText + '</div>';
+  }
+  if (isSummary(d)) {
+    var key = d.category;
+    var rowsT = state.selected.map(function(p) {
+      return { name: p.name, colour: p.colour, v: summaryValue(p.data, key) };
+    }).sort(function(a, b) { return b.v - a.v; });
+    return '<div class="t-cat">' + displayName(d) + '</div>' +
+           '<table>' + rowsT.map(function(r) {
+             return '<tr><td class="w"><i class="sw" style="background:' + r.colour + '"></i>' +
+                    r.name + '</td><td class="n">' + kr(r.v) + '</td></tr>';
+           }).join("") + '</table>';
+  }
+  var aisleKey = d.category === "Fruits" ? "Vegetables" : d.category;
+  var rows = state.selected.map(function(p) {
+    return { name: p.name, colour: p.colour, v: amountFor(p, aisleKey) };
+  }).sort(function(a, b) { return b.v - a.v; });
+  var sum = rows.reduce(function(a, r) { return a + r.v; }, 0);
+  return '<div class="t-cat">' + displayName(d) + '</div>' +
+         '<div class="t-val">' + kr(sum) + '</div>' +
+         '<table>' + rows.map(function(r) {
+           return '<tr><td class="w"><i class="sw" style="background:' + r.colour + '"></i>' +
+                  r.name + '</td><td class="n">' + kr(r.v) + '</td></tr>';
+         }).join("") + '</table>';
+}
+
+// ------------------------------ //
+//                                //
+//     RECTANGLES AND LABELS      //
+//                                //
+// ------------------------------ //
+
+function addRectanglesAndTexts(data) {
+  var compare = state.mode === "compare";
+  var max = maxAmount(data);
+
+  var rects = svgLines.selectAll(".category-rect").data(data);
+
+  rects.enter()
+    .append("rect")
+    .attr("class", "category-rect")
+    .merge(rects)
+    .attr("data-category", function(d) { return d.category; })
+    .attr("x", function(d) { return boxX(d); })
+    .attr("y", function(d) { return d.y; })
+    .attr("width", function(d) { return boxW(d); })
+    .attr("height", function(d) { return d.height; })
+    .attr("rx", function(d) { return isSummary(d) ? 8 : 0; })
+    .attr("shape-rendering", function(d) { return isSummary(d) ? "auto" : "crispEdges"; })
+    .attr("fill", function(d) {
+      if (compare) return isSummary(d) ? SUMMARY_FILL : NEUTRAL_AISLE;
+      return fillFor(d, max);
+    })
+
+    .on("mouseover", function(event, d) {
+      d3.select(this).transition().duration(60).attr("opacity", 0.86);
+      tooltipDiv.transition().duration(60).style("opacity", 1);
+      tooltipDiv.html(tooltipHTML(d))
+        // the 2024 tooltip sat on the aisle's own colour; keep that in the 2024 view
+        .style("background", (state.mode === "one" && state.legacy) ? d.color : null)
+        .style("top", (event.pageY + 14) + "px")
+        .style("left", (event.pageX + 14) + "px");
+    })
+    .on("mousemove", function(event, d) {
+      tooltipDiv.style("top", (event.pageY + 14) + "px")
+        .style("left", (event.pageX + 14) + "px");
+    })
+    .on("mouseout", function(event, d) {
+      d3.select(this).transition().duration(60).attr("opacity", 1);
+      tooltipDiv.transition().duration(60).style("opacity", 0);
+    });
+
+  rects.exit().remove();
+
+  // Aisle name. In compare mode it sits at the top so the bars get the middle.
+  var texts = svgLines.selectAll(".category-text").data(data);
+
+  texts.enter()
+    .append("text")
+    .attr("class", "category-text")
+    .merge(texts)
+    .attr("x", function(d) { return boxX(d) + boxW(d) / 2; })
+    .attr("y", function(d) {
+      if (compare && !isSummary(d)) return d.y + 20;
+      return d.y + d.height / 2 - (d.height >= LABEL_MIN_H ? 15 : 0);
+    })
+    .text(function(d) { return d.text; })
+    .attr("font-size", function(d) { return (compare && !isSummary(d)) ? "18px" : "21px"; })
+    .attr("font-weight", "600")
+    .attr("font-family", "inherit")
+    .attr("letter-spacing", "-0.01em")
+    .attr("fill", function(d) { return compare ? (isSummary(d) ? "#FFFFFF" : "#15181B") : inkFor(d, max); })
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("pointer-events", "none");
+
+  texts.exit().remove();
+
+  // Amount, shown directly on aisles with room for it. One-person mode only:
+  // in compare mode the bars and the tooltip carry the figures.
+  var values = svgLines.selectAll(".category-value").data(data);
+
+  values.enter()
+    .append("text")
+    .attr("class", "category-value")
+    .merge(values)
+    .attr("x", function(d) { return boxX(d) + boxW(d) / 2; })
+    .attr("y", function(d) { return d.y + d.height / 2 + 15; })
+    .text(function(d) {
+      if (compare) return "";
+      if (!d.text || d.height < LABEL_MIN_H) return "";
+      return kr(parseAmount(d.tooltipText));
+    })
+    .attr("font-size", "19px")
+    .attr("font-weight", "500")
+    .attr("font-family", "inherit")
+    .attr("fill", function(d) { return compare ? "#FFFFFF" : inkFor(d, max); })
+    .attr("opacity", 0.78)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("pointer-events", "none");
+
+  values.exit().remove();
+}
+
+// ------------------------------ //
+//                                //
+//        COMPARISON BARS         //
+//                                //
+// ------------------------------ //
+
+var SVG_NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs) {
+  var el = document.createElementNS(SVG_NS, tag);
+  for (var k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function clearBars() {
+  while (barsNode.firstChild) barsNode.removeChild(barsNode.firstChild);
+}
+
+// One bar per selected person inside each aisle, all on a single scale, so a
+// bar can be read against its neighbours and against the rest of the store.
+function drawCompareBars() {
+  clearBars();
+  // SVG paints in document order: keep the overlay last so it sits on top.
+  svgLines.node().appendChild(barsNode);
+  var people = state.selected;
+  if (!people.length) return;
+
+  var aisles = allCategoriesData.filter(isAisle);
+
+  var max = 0;
+  aisles.forEach(function(d) {
+    people.forEach(function(p) { max = Math.max(max, amountFor(p, d.category)); });
+  });
+  if (!max) return;
+
+  aisles.forEach(function(d) {
+    var padX = 14;
+    var top = d.y + 34;
+    var bottom = d.y + d.height - 12;
+    var innerW = d.width - padX * 2;
+    var innerH = bottom - top;
+    if (innerW <= 20 || innerH <= 16) return;
+
+    var gap = 5;
+    var rowH = Math.min(24, (innerH - gap * (people.length - 1)) / people.length);
+    if (rowH < 3) return;
+    var blockH = rowH * people.length + gap * (people.length - 1);
+    var startY = top + (innerH - blockH) / 2;
+
+    // Room for an initial in front of each bar when the aisle is wide enough.
+    var keyW = innerW > 90 ? 15 : 0;
+    var barX = d.x + padX + keyW;
+    var barW = innerW - keyW;
+
+    people.forEach(function(p, i) {
+      var v = amountFor(p, d.category);
+      var y = startY + i * (rowH + gap);
+
+      if (keyW && rowH >= 9) {
+        barsNode.appendChild(Object.assign(
+          svgEl("text", {
+            x: d.x + padX, y: y + rowH / 2,
+            "font-size": Math.min(13, rowH) + "px", "font-weight": "600",
+            "font-family": "inherit", fill: "#6B7280",
+            "dominant-baseline": "middle", "pointer-events": "none"
+          }),
+          { textContent: p.initial }
+        ));
+      }
+
+      barsNode.appendChild(svgEl("rect", {
+        x: barX, y: y, width: barW, height: rowH,
+        rx: Math.min(3, rowH / 2), fill: TRACK, "pointer-events": "none"
+      }));
+
+      var w = max ? (v / max) * barW : 0;
+      if (w > 0) {
+        barsNode.appendChild(svgEl("rect", {
+          x: barX, y: y, width: Math.max(w, 2), height: rowH,
+          rx: Math.min(3, rowH / 2), fill: p.colour, "pointer-events": "none"
+        }));
+      }
+    });
+  });
+}
+
+
+// ------------------------------ //
+//                                //
+//       2024 / 2026 WIPER        //
+//                                //
+// ------------------------------ //
+
+// The 2024 store is redrawn on its own layer, exactly as it was submitted:
+// one hue per aisle, black serif labels, walls in the selected person's
+// colour. A wiper arm pivoting from the shop's entrance sweeps it in and out.
+
+var LEGACY_WALL = {
+  Everyone: "black", Anna: "#2fdb5a", Camille: "#ec654a",
+  Isabella: "#ff36ab", Jonathan: "#f9cb40", Nikoline: "#00a7e1"
+};
+var LEGACY_LINES = [
+  [300, 70, 1600, 70], [450, 900, 1400, 900], [300, 70, 300, 650],
+  [1600, 70, 1600, 650], [300, 650, 450, 900], [1600, 650, 1400, 900]
+];
+
+var PIVOT = { x: 925, y: 905 };   // bottom centre of the store
+var REACH = 1700;                 // far enough to clear every corner
+var ARM = 840;                    // visible wiper arm
+
+var legacySvg = svgEl("svg", {
+  viewBox: "250 30 1420 900", preserveAspectRatio: "xMidYMid meet",
+  "class": "legacy", "aria-hidden": "true", focusable: "false"
+});
+var legacyDefs = svgEl("defs", {});
+var wipeClip = svgEl("clipPath", { id: "wipe-clip" });
+var wipePath = svgEl("path", { d: "M0,0" });
+wipeClip.appendChild(wipePath);
+legacyDefs.appendChild(wipeClip);
+legacySvg.appendChild(legacyDefs);
+
+var legacyBody = svgEl("g", { "clip-path": "url(#wipe-clip)" });
+legacySvg.appendChild(legacyBody);
+
+var blade = svgEl("g", { opacity: 0 });
+var bladeArm = svgEl("line", {
+  x1: PIVOT.x, y1: PIVOT.y, x2: PIVOT.x, y2: PIVOT.y,
+  stroke: "#15181B", "stroke-width": 7, "stroke-linecap": "round"
+});
+var bladeHub = svgEl("circle", { cx: PIVOT.x, cy: PIVOT.y, r: 14, fill: "#15181B" });
+blade.appendChild(bladeArm);
+blade.appendChild(bladeHub);
+legacySvg.appendChild(blade);
+
+stage.node().appendChild(legacySvg);
+
+function drawLegacy(data, personName) {
+  while (legacyBody.firstChild) legacyBody.removeChild(legacyBody.firstChild);
+
+  // Opaque backing, so the 2026 layer underneath never shows through the gaps.
+  legacyBody.appendChild(svgEl("rect", { x: 250, y: 30, width: 1420, height: 900, fill: "#FFFFFF" }));
+
+  var wall = LEGACY_WALL[personName] || "black";
+  LEGACY_LINES.forEach(function(l) {
+    legacyBody.appendChild(svgEl("line", {
+      x1: l[0], y1: l[1], x2: l[2], y2: l[3], stroke: wall, "stroke-width": 5
+    }));
+  });
+
+  data.forEach(function(d) {
+    legacyBody.appendChild(svgEl("rect", {
+      x: d.x, y: d.y, width: d.width, height: d.height, fill: d.color
+    }));
+  });
+
+  data.forEach(function(d) {
+    if (!d.text) return;
+    var t = svgEl("text", {
+      x: d.x + d.width / 2, y: d.y + d.height / 2,
+      "font-size": "20px", fill: "black",
+      "font-family": "'Times New Roman', Times, serif",
+      "text-anchor": "middle", "dominant-baseline": "middle"
+    });
+    t.textContent = d.text;
+    legacyBody.appendChild(t);
+  });
+}
+
+var wipeT = 0;
+
+// t = 0 shows 2026 only, t = 1 shows 2024 only. The revealed region is the
+// wedge between the left-hand floor and the arm, so the arm sweeps over the
+// store from left to right and back, the way a windscreen wiper does.
+function setWipe(t) {
+  wipeT = Math.max(0, Math.min(1, t));
+  var theta = wipeT * Math.PI;
+
+  if (wipeT <= 0) {
+    wipePath.setAttribute("d", "M0,0");
+  } else {
+    var pts = [PIVOT.x + "," + PIVOT.y];
+    var steps = 48;
+    for (var k = 0; k <= steps; k++) {
+      var phi = theta * k / steps;
+      pts.push((PIVOT.x - REACH * Math.cos(phi)).toFixed(1) + "," +
+               (PIVOT.y - REACH * Math.sin(phi)).toFixed(1));
+    }
+    wipePath.setAttribute("d", "M" + pts.join(" L") + " Z");
+  }
+
+  bladeArm.setAttribute("x2", (PIVOT.x - ARM * Math.cos(theta)).toFixed(1));
+  bladeArm.setAttribute("y2", (PIVOT.y - ARM * Math.sin(theta)).toFixed(1));
+  blade.setAttribute("opacity", (wipeT > 0.002 && wipeT < 0.998) ? 1 : 0);
+}
+
+var reduceMotion = !!(window.matchMedia &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+var wipeFrame = null;
+var WIPE_MS = 2000;
+
+function easeInOut(x) {
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
+function animateWipe(to) {
+  if (wipeFrame) cancelAnimationFrame(wipeFrame);
+  if (reduceMotion) { setWipe(to); return; }
+  var from = wipeT, start = null;
+  // A full sweep takes 1.6 s; a sweep reversed halfway takes proportionally less.
+  var duration = WIPE_MS * Math.max(0.35, Math.abs(to - from));
+  function step(ts) {
+    if (start === null) start = ts;
+    var p = Math.min(1, (ts - start) / duration);
+    setWipe(from + (to - from) * easeInOut(p));
+    wipeFrame = p < 1 ? requestAnimationFrame(step) : null;
+  }
+  wipeFrame = requestAnimationFrame(step);
+}
+
+var eraEl = document.getElementById("era");
+var eraBadge = document.getElementById("era-badge");
+var wiperBtn = document.getElementById("wiper-btn");
+var wiperLabel = document.getElementById("wiper-label");
+
+function syncWiperUI() {
+  wiperBtn.setAttribute("aria-pressed", state.legacy ? "true" : "false");
+  wiperLabel.textContent = state.legacy ? "Back to the 2026 version" : "See the 2024 version";
+  eraBadge.textContent = state.legacy ? "2024 version, as submitted" : "2026 version";
+  // The shading key describes the 2026 encoding only; it means nothing for 2024.
+  document.getElementById("legend-ramp").classList[state.legacy ? "add" : "remove"]("dimmed");
+}
+
+wiperBtn.addEventListener("click", function() {
+  if (state.mode !== "one") return;
+  state.legacy = !state.legacy;
+  syncWiperUI();
+  animateWipe(state.legacy ? 1 : 0);
+});
+
+setWipe(0);
+
+// ------------------------------ //
+//                                //
+//          CONTROLS              //
+//                                //
+// ------------------------------ //
+
+var peopleEl = document.getElementById("people");
+var statsEl = document.getElementById("stats");
+var totalsEl = document.getElementById("totals");
+var legendRamp = document.getElementById("legend-ramp");
+var legendPeople = document.getElementById("legend-people");
+var hintOne = document.getElementById("hint-one");
+var hintCompare = document.getElementById("hint-compare");
+var modeOneBtn = document.getElementById("mode-one");
+var modeCompareBtn = document.getElementById("mode-compare");
+
+function buildChips() {
+  peopleEl.innerHTML = "";
+  var list = state.mode === "one" ? [EVERYONE].concat(PEOPLE) : PEOPLE;
+  list.forEach(function(p) {
+    var b = document.createElement("button");
+    b.className = "chip";
+    b.type = "button";
+    b.innerHTML = '<span class="dot" style="color:' + p.colour + '"></span>' + p.name;
+    b.addEventListener("click", function() {
+      if (state.mode === "one") {
+        state.person = p;
+      } else {
+        var i = state.selected.indexOf(p);
+        if (i === -1) state.selected.push(p);
+        else if (state.selected.length > 1) state.selected.splice(i, 1);
+      }
+      render();
+    });
+    peopleEl.appendChild(b);
+  });
+}
+
+function syncChips() {
+  var list = state.mode === "one" ? [EVERYONE].concat(PEOPLE) : PEOPLE;
+  Array.prototype.forEach.call(peopleEl.children, function(el, i) {
+    var p = list[i];
+    var on = state.mode === "one" ? (p === state.person) : (state.selected.indexOf(p) !== -1);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
+function renderTotals() {
+  totalsEl.innerHTML = "";
+  state.selected.forEach(function(p) {
+    var d = document.createElement("div");
+    d.className = "total";
+    d.innerHTML = '<div class="who"><span class="swatch" style="background:' + p.colour + '"></span>' +
+                  p.name + '</div><div class="amount">' +
+                  kr(summaryValue(p.data, "Checkout1")) + '</div>';
+    totalsEl.appendChild(d);
+  });
+}
+
+function renderPeopleLegend() {
+  legendPeople.innerHTML = state.selected.map(function(p) {
+    return '<span class="key"><i style="background:' + p.colour + '"></i>' + p.name + '</span>';
+  }).join("") + '<span>Same order in every aisle, one shared scale</span>';
+}
+
+function toggle(el, hidden) { el.classList[hidden ? "add" : "remove"]("hidden"); }
+
+function render() {
+  var compare = state.mode === "compare";
+
+  modeOneBtn.setAttribute("aria-pressed", compare ? "false" : "true");
+  modeCompareBtn.setAttribute("aria-pressed", compare ? "true" : "false");
+  toggle(statsEl, compare);
+  toggle(totalsEl, !compare);
+  toggle(legendRamp, compare);
+  toggle(legendPeople, !compare);
+  toggle(hintOne, compare);
+  toggle(hintCompare, !compare);
+
+  syncChips();
+
+  // The wiper compares one store with itself, so it belongs to one-person mode.
+  toggle(eraEl, compare);
+  if (compare && state.legacy) {
+    state.legacy = false;
+    if (wipeFrame) cancelAnimationFrame(wipeFrame);
+    setWipe(0);
+  }
+  syncWiperUI();
+  if (!compare) drawLegacy(state.person.data, state.person.name);
+
+  // Geometry always comes from the combined dataset so the store never moves;
+  // in one-person mode the figures come from that person's array.
+  addRectanglesAndTexts(compare ? allCategoriesData : state.person.data);
+
+  if (compare) {
+    drawCompareBars();
+    renderTotals();
+    renderPeopleLegend();
+  } else {
+    clearBars();
+    document.getElementById("stat-spent").textContent =
+      kr(summaryValue(state.person.data, "Checkout1"));
+    document.getElementById("stat-saved").textContent =
+      kr(summaryValue(state.person.data, "Checkout2"));
+  }
+}
+
+function setMode(mode) {
+  if (state.mode === mode) return;
+  state.mode = mode;
+  buildChips();
+  render();
+}
+
+modeOneBtn.addEventListener("click", function() { setMode("one"); });
+modeCompareBtn.addEventListener("click", function() { setMode("compare"); });
+
+buildChips();
+render();
+
+</script>
+</body>
+</html>
