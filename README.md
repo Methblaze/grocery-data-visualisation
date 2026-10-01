@@ -2,7 +2,7 @@
 
 Three weeks of grocery receipts from five people, laid out as the supermarket they were bought in. Each aisle is a category. Look at one person's store, where shading shows where their money went, or compare people aisle by aisle.
 
-**Live:** https://<your-username>.github.io/<repo-name>/
+**Live:** https://methblaze.github.io/grocery-data-visualisation/
 
 Built with D3 for the course Data Visualisation Design at the IT University of Copenhagen, spring 2024. The data was collected by the group from its own receipts between 20 March and 10 April 2024.
 
