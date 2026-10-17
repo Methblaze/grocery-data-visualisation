@@ -9,7 +9,7 @@
     --page: #F6F7F5;
     --card: #FFFFFF;
     --ink: #15181B;
-    --muted: #6B7280;
+    --muted: #5F6673; /* 4.95:1 on the mode track, 5.38:1 on the page (WCAG 2.2) */
     --line: #E3E6E2;
     --wall: #8E978F;
     --accent: #1C6B4C;
@@ -752,7 +752,7 @@ function drawCompareBars() {
           svgEl("text", {
             x: d.x + padX, y: y + rowH / 2,
             "font-size": Math.min(13, rowH) + "px", "font-weight": "600",
-            "font-family": "inherit", fill: "#6B7280",
+            "font-family": "inherit", fill: "#5F6673", // --muted; 4.9:1 on the aisle
             "dominant-baseline": "middle", "pointer-events": "none"
           }),
           { textContent: p.initial }
