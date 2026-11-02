@@ -116,6 +116,10 @@ function Welcome() {
       <p>Five people typed in every grocery receipt for three weeks. Pick a shopper, then walk the aisles.</p>
       <p>Their products light up on the shelves, the bar above each aisle fills as far as they spent there, and their items land in your basket.</p>
       <p className="muted">Start the walk below, or use the arrow keys. Drag to look around, or switch to free walk.</p>
+      <p className="muted credit">
+        Fruit, vegetables, the croissant and the produce crates are CC0 scans from <a href="https://polyhaven.com">Poly Haven</a>; everything else is
+        built in code, printed with each item’s name and price from the receipts.
+      </p>
     </div>
   );
 }

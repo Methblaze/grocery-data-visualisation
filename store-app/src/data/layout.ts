@@ -57,7 +57,9 @@ export const CHECKOUTS = [
   { x: -4, z: 6.7, length: 2.6, depth: 0.9 },
   { x: 3.2, z: 6.7, length: 2.6, depth: 0.9 },
 ];
-export const CHECKOUT_SCREEN = { x: -0.4, y: 2.3, z: 8.92 };
+export const CHECKOUT_SCREEN = { x: -3.1, y: 2.35, z: 8.92 };
+/** The card terminal on its stand, at the customer's end of the first counter */
+export const TERMINAL = { x: -3.7, y: 0.84, z: 5.5 };
 export const ENTRANCE = { minX: -12, maxX: -8 };
 
 // The guided walk: a path through every aisle, with a stop in front of each one
@@ -90,9 +92,11 @@ const ROUTE: (Stop | { x: number; z: number })[] = [
   corner(3.1, -4.3),
   corner(-4.1, -4.3),
   stop("meat", -3.4, -1.6, [-5.9, 0.75, 0.6]),
-  stop("bread", -4.75, 0.9, [-2.3, 1.0, 2.9]),
-  corner(-4.1, 4.6),
-  stop("checkout", -0.4, 4.6, [-0.4, 1.5, 8.9]),
+  stop("bread", -4.75, 0.9, [-2.3, 1.0, 1.3]),
+  corner(-4.1, 4.4),
+  corner(-3.0, 4.5),
+  // At the counter, facing the card terminal
+  stop("checkout", -3.1, 5.0, [-3.7, 1.12, 5.55]),
 ];
 
 export const STOPS: Stop[] = ROUTE.filter((p): p is Stop => "id" in p);
@@ -141,6 +145,14 @@ export interface SlotPlan {
   margin: number;
 }
 
+/** The produce crates (Poly Haven's Plastic Crate 02, at its real size) and the two stepped rows they stand in */
+export const CRATE = { width: 0.505, depth: 0.405, height: 0.254, pitch: 0.52 };
+/** back: how far behind the stand's front edge each row's back wall is */
+export const CRATE_ROWS = [
+  { bottom: 0.56, back: 0.44 },
+  { bottom: 0.74, back: 0.88 },
+];
+
 export function slotPlan(f: Fixture): SlotPlan {
   const front = f.depth / 2;
   switch (f.kind) {
@@ -151,7 +163,13 @@ export function slotPlan(f: Fixture): SlotPlan {
     case "cooler":
       return { ys: [0.42, 0.86, 1.3, 1.74], zs: [0.05, 0.05, 0.05, 0.05].map((d) => front - 0.3 + d), step: 0.16, margin: 0.2 };
     case "crates":
-      return { ys: [0.86, 0.94, 1.02], zs: [front - 0.3, front - 0.68, front - 1.06], step: 0.2, margin: 0.25 };
+      // Two stepped rows of crates (CRATE_ROWS), two rows of produce in each, near the rim
+      return {
+        ys: CRATE_ROWS.flatMap((r) => [r.bottom + CRATE.height - 0.05, r.bottom + CRATE.height - 0.05]),
+        zs: CRATE_ROWS.flatMap((r) => [front - r.back + CRATE.depth - 0.12, front - r.back + 0.13]),
+        step: 0.13,
+        margin: 0.2,
+      };
     case "freezer":
       return { ys: [0.74, 0.74, 0.74], zs: [front - 0.25, 0, -front + 0.25], step: 0.24, margin: 0.25 };
     case "counter":

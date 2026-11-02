@@ -18,23 +18,33 @@ export function canvasTexture(width: number, height: number, draw: (ctx: CanvasR
   return { texture, redraw };
 }
 
-/** The shop floor: pale tiles with fine grout lines */
+/** The shop floor: 60 cm vinyl tiles, four by four per repeat, each a slightly different shade, with fine speckle and grout */
 export function floorTexture() {
-  const { texture } = canvasTexture(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = "#E7E8E3";
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#EEEFEA";
-    ctx.fillRect(4, 4, w / 2 - 8, h / 2 - 8);
-    ctx.fillRect(w / 2 + 4, h / 2 + 4, w / 2 - 8, h / 2 - 8);
-    ctx.strokeStyle = "#CDD0C9";
+  const { texture } = canvasTexture(512, 512, (ctx, w) => {
+    const t = w / 4;
+    let seed = 7;
+    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let x = 0; x < 4; x++)
+      for (let y = 0; y < 4; y++) {
+        const v = 228 + Math.round(rand() * 10);
+        ctx.fillStyle = `rgb(${v},${v + 1},${v - 4})`;
+        ctx.fillRect(x * t, y * t, t, t);
+      }
+    for (let i = 0; i < 2600; i++) {
+      const g = 150 + Math.round(rand() * 80);
+      ctx.fillStyle = `rgba(${g},${g},${g - 6},${0.25 + rand() * 0.3})`;
+      ctx.fillRect(rand() * w, rand() * w, 1.6, 1.6);
+    }
+    ctx.strokeStyle = "#C3C6BF";
     ctx.lineWidth = 3;
-    ctx.strokeRect(0, 0, w, h);
-    ctx.beginPath();
-    ctx.moveTo(w / 2, 0);
-    ctx.lineTo(w / 2, h);
-    ctx.moveTo(0, h / 2);
-    ctx.lineTo(w, h / 2);
-    ctx.stroke();
+    for (let i = 0; i <= 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * t, 0);
+      ctx.lineTo(i * t, w);
+      ctx.moveTo(0, i * t);
+      ctx.lineTo(w, i * t);
+      ctx.stroke();
+    }
   });
   texture.wrapS = texture.wrapT = RepeatWrapping;
   return texture;

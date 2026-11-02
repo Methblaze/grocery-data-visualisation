@@ -38,6 +38,19 @@ The floor plan, built as a supermarket you can walk through: coolers and shelves
 - **The numbers** on the signs, in the basket and at the checkout are the corrected totals the 2026 version shows. The products are the receipt lines. The two do not match exactly (the receipt lines add up to 5.537,55 DKK, the corrected total is 5.423,10 DKK), so wherever they differ for a shopper the store shows both rather than picking one.
 - Hover or tap a product for its receipt line. Each aisle's panel lists the shopper's lines, and screen readers hear each aisle as you arrive. With reduced motion, the walk jumps from aisle to aisle and nothing flies.
 
+Every packaged product is shaped in code from its receipt line (a carton for milk, a tin for tuna, a bag for crisps) and printed with the item's own name and unit price; no brand packaging is copied. Produce and bread use real scanned models where one matches the item, all CC0 from [Poly Haven](https://polyhaven.com), compressed into `store-app/public/models/`:
+
+| Model | Author | Used for |
+|---|---|---|
+| Bananas | Alexander Shulha | Bananer, Øko bananer |
+| Food Ginger 01, Food Lime 01, Food Avocado 01, Food Kiwi 01 | Oliver Harries | Ingefær, Lime, Avocado, Kiwi |
+| Pears Asian 01 | Amal Kumar | Pærer |
+| Yellow Onion | Kuutti Siitonen | Øko løg, and Rødløg tinted red |
+| Lemon | Kuutti Siitonen | Appelsiner, tinted orange |
+| Sweet Potato | Jan Martens | Kartofler, tinted paler |
+| Croissant | Greg Zaal, Dario Barresi | Crodots |
+| Plastic Crate 02 | Fabi_G | The produce crates |
+
 Built with React Three Fiber (three.js), React Spring and zustand in `store-app/`. To work on it:
 
 ```

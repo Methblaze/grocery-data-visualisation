@@ -9,7 +9,7 @@ const STRIPE = "#1C6B4C";
 export function Room() {
   const floor = useMemo(() => {
     const t = floorTexture();
-    t.repeat.set((ROOM.maxX - ROOM.minX) / 1.2, (ROOM.maxZ - ROOM.minZ) / 1.2);
+    t.repeat.set((ROOM.maxX - ROOM.minX) / 2.4, (ROOM.maxZ - ROOM.minZ) / 2.4);
     return t;
   }, []);
   const w = ROOM.maxX - ROOM.minX;
@@ -29,14 +29,29 @@ export function Room() {
 
   return (
     <group>
-      <ambientLight intensity={0.55} />
-      <hemisphereLight args={["#ffffff", "#d9d5cb", 0.8]} />
-      <directionalLight position={[4, 10, 6]} intensity={0.9} />
-      <directionalLight position={[-6, 8, -4]} intensity={0.35} />
+      {/* Soft fill, and one key light from the ceiling that casts the shadows (on desktop) */}
+      <hemisphereLight args={["#ffffff", "#d9d5cb", 0.55]} />
+      <directionalLight
+        position={[3, 12, 5]}
+        intensity={1.15}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-15}
+        shadow-camera-right={15}
+        shadow-camera-top={11}
+        shadow-camera-bottom={-11}
+        shadow-camera-near={1}
+        shadow-camera-far={30}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.03}
+        shadow-radius={4}
+      />
+      <directionalLight position={[-6, 8, -4]} intensity={0.3} />
 
+      {/* A low-gloss vinyl floor that catches the ceiling lights */}
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
         <planeGeometry args={[w, d]} />
-        <meshStandardMaterial map={floor} roughness={0.85} />
+        <meshStandardMaterial map={floor} roughness={0.32} metalness={0} envMapIntensity={0.8} />
       </mesh>
       <mesh rotation-x={Math.PI / 2} position-y={h}>
         <planeGeometry args={[w, d]} />
@@ -72,7 +87,7 @@ export function Room() {
         <group key={c.x} position={[c.x, 0, c.z]}>
           <mesh position-y={0.42}>
             <boxGeometry args={[c.depth, 0.84, c.length]} />
-            <meshStandardMaterial color="#3B4249" roughness={0.6} />
+            <meshStandardMaterial color="#5D656D" roughness={0.5} metalness={0.2} />
           </mesh>
           <mesh position={[0, 0.85, -0.2]}>
             <boxGeometry args={[c.depth - 0.2, 0.03, c.length - 0.7]} />
