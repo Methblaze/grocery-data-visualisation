@@ -159,13 +159,10 @@ button.ghost {
 }
 
 .shoppers {
-  top: var(--gap);
-  right: var(--gap);
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px;
-  max-width: calc(100% - 360px);
   justify-content: flex-end;
 }
 .shoppers button {
@@ -181,11 +178,39 @@ button.ghost {
 }
 
 .details {
-  top: 84px;
-  right: var(--gap);
   width: 360px;
-  max-height: calc(100% - 220px);
   overflow: auto;
+}
+@media (min-width: 761px) {
+  .side {
+    position: fixed;
+    z-index: 1;
+    top: var(--gap);
+    right: var(--gap);
+    bottom: 150px;
+    max-width: calc(100% - 370px);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .side > .card {
+    position: static;
+    pointer-events: auto;
+  }
+  .side .shoppers {
+    max-width: 100%;
+  }
+  .side .details {
+    max-width: 100%;
+    min-height: 0;
+  }
+}
+@media (max-width: 760px) {
+  .side {
+    display: contents;
+  }
 }
 .summary {
   font-size: 14px;
@@ -346,6 +371,7 @@ button.ghost {
   .shoppers {
     top: 82px;
     left: var(--gap);
+    right: var(--gap);
     max-width: none;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -355,6 +381,7 @@ button.ghost {
     top: auto;
     bottom: 150px;
     left: var(--gap);
+    right: var(--gap);
     width: auto;
     max-height: 44%;
   }

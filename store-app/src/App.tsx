@@ -40,8 +40,11 @@ export default function App() {
         )}
       </div>
       <Header />
-      <Shoppers />
-      <Details />
+      {/* One column on the right, so the details always start below the shopper buttons, however many rows they wrap to */}
+      <div className="side">
+        <Shoppers />
+        <Details />
+      </div>
       <Walk />
       <BasketTotal />
       <Tooltip />
