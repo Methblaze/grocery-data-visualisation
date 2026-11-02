@@ -11,6 +11,7 @@ Built with D3 for the course Data Visualisation Design at the IT University of C
 | File | What it is |
 |---|---|
 | `Updated2026.html` | The 2026 redesign. Same data, new interface, and a comparison mode the original did not have. The root URL opens this. |
+| `store/` | The 3D store: the same shop as a supermarket you can walk through. Built from `store-app/`. |
 | `Final.html` | The interactive prototype as submitted in 2024. |
 | `alternative1.html`, `alternative2.html`, `alternative3.html`, `category.html`, `money.html` | The early non-interactive prototypes: pie and stacked bar charts tried before the floor plan. |
 | `data.csv` | The raw receipt log. |
@@ -25,6 +26,27 @@ The redesign gives colour a job. Shading now runs light to dark by amount spent,
 A wiper button above the store sweeps between the two versions, redrawing the 2024 store exactly as it was submitted on top of the 2026 one, so the change can be seen on the same data in the same place.
 
 It also adds a comparison mode. One bar per person inside every aisle, all on one scale across the whole store, so who spent more on what can be read directly. Identity is carried by colour, by a fixed row order and by an initial beside each bar, so nothing depends on colour alone.
+
+## The 3D store
+
+**Live:** https://methblaze.github.io/grocery-data-visualisation/store/
+
+The floor plan, built as a supermarket you can walk through: coolers and shelves along the back wall, four islands in the middle, drinks and sweets on the right, the checkout at the front. Every unit on every receipt line in `data.csv` is a product on its aisle's shelves, grouped by shopper.
+
+- **Pick a shopper** and their products light up and slide forward, while everyone else's fade. The sign above each aisle shows what they spent there, and a bar above the fixture fills as far as that amount reaches, on one scale for all five people, so the aisles read as a bar chart from across the shop. Arriving at an aisle sends their items from it into your basket, and the checkout shows what they paid and saved.
+- **Guided or free.** The guided walk stops in front of every aisle: arrow keys, the scroll wheel, the buttons or the aisle list move you on, and dragging looks around. Free walk is WASD or the arrow keys, or the on-screen pad on a touch screen, and the shelves stop you.
+- **The numbers** on the signs, in the basket and at the checkout are the corrected totals the 2026 version shows. The products are the receipt lines. The two do not match exactly (the receipt lines add up to 5.537,55 DKK, the corrected total is 5.423,10 DKK), so wherever they differ for a shopper the store shows both rather than picking one.
+- Hover or tap a product for its receipt line. Each aisle's panel lists the shopper's lines, and screen readers hear each aisle as you arrive. With reduced motion, the walk jumps from aisle to aisle and nothing flies.
+
+Built with React Three Fiber (three.js), React Spring and zustand in `store-app/`. To work on it:
+
+```
+cd store-app
+npm install
+npm run dev     # http://localhost:5173/grocery-data-visualisation/store/
+npm test        # checks the totals against Updated2026.html and that they add up
+npm run build   # writes ../store, which GitHub Pages serves
+```
 
 ## A note on the data
 
